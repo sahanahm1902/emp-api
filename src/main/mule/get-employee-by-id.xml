@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="get-employee-by-id" doc:id="cc697dec-c1c4-4184-9d5e-e10d7882b438" >
+		<http:listener doc:name="Listener" doc:id="1671d423-1f73-4279-87ec-778298b2c072" config-ref="HTTP_Listener_config" path="get-employee" allowedMethods="GET"/>
+		<logger level="INFO" doc:name="start_Logger" doc:id="0ae34370-0794-48d9-ba40-8a5bde0ee2e6" message="start of logger" />
+		<db:select doc:name="Select employee" doc:id="cd6ca11a-3010-4d77-b3c9-5d537ced3cf8" config-ref="Database_Config">
+			<db:sql ><![CDATA[select emp_id, emp_name, emp_status from emp where emp_id = :empId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	empId: attributes.queryParams.employeeID
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="bea57d46-f805-42ac-b8fe-72d1f56e1783" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	employeeID: payload[0].EMP_ID,
+	employeeName:payload[0].EMP_NAME,
+	employeeStatus:payload[0].EMP_STATUS
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	
+	<flow name="get-all-employee" doc:id="005b6ca6-d17c-4e9f-a037-c8acdd673648" >
+		<http:listener doc:name="Listener" doc:id="3ec6f9df-c5ac-4b5e-ab55-526f32d0c8a0" config-ref="HTTP_Listener_config" path="get-all-employee" allowedMethods="GET"/>
+		<logger level="INFO" doc:name="start_Logger" doc:id="9c547a29-6c85-41cd-ab96-f67ea1ca003a" message="start of logger" />
+		<db:select doc:name="Select employee" doc:id="2461377d-c8a5-4f90-8878-c3988aa5aabd" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from emp]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="6438ad85-b9da-47c4-b2d4-2768b243f724" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map(value, index) -> {
+	employeeID: value.EMP_ID,
+	employeeName:value.EMP_NAME,
+	employeeStatus:value.EMP_STATUS
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

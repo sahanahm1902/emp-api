@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="3a7baa08-ea5a-4cdb-8c1d-9dace2674647" basePath="emp-sapi" >
+		<http:listener-connection host="0.0.0.0" port="8091" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="9b053961-c6ac-447e-881a-8626c12e9201" >
+		<db:oracle-connection host="localhost" user="system" password="lucky" instance="XE" />
+	</db:config>
+	<flow name="create-employeeFlow" doc:id="c89f0ea8-90e3-474b-a90b-dac20bec06fe" >
+		<http:listener doc:name="Listener" doc:id="9fbdfafc-f233-48f2-8dc5-28c71e0d5d41" config-ref="HTTP_Listener_config" path="create-employee" allowedMethods="POST">
+			<http:error-response >
+				<http:body ><![CDATA[#[payload]]]></http:body>
+			</http:error-response>
+		</http:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="47bca435-8fc5-49ec-ad56-1419dae0ba9a" message="start of logger"/>
+		<db:insert doc:name="Insert employee details" doc:id="ef068785-e79e-4ade-8001-a4478d006d4d" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert into emp(EMP_ID,EMP_NAME,EMP_STATUS) values(:empID, :empName, :empStatus)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	empID: payload.employeeId,
+	empName: payload.employeeName,
+	empStatus: payload.employeeStatus
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="033c3c0d-5c60-497c-80c0-6ae40f016c73" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"status": 200,
+	"message": "success"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="0c3abffe-7ede-4194-b0b2-8112af746c33" message="end logger"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="1de034a3-9018-4a7e-8597-1ef8045f4bf9" type="DB:BAD_SQL_SYNTAX">
+				<logger level="INFO" doc:name="Logger" doc:id="a6233d79-70fc-426f-8360-f633c9ee70fa" message="error"/>
+				<ee:transform doc:name="Transform Message" doc:id="a6b3167c-ca51-4d82-b2b6-5a01bca84d2a" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"code": 400,
+	"message": "Bad request",
+	"detail": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>

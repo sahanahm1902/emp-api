@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="update-employeeFlow" doc:id="5de511c5-8222-4c25-95f3-f30b3f148c96" >
+		<http:listener doc:name="Listener" doc:id="a3b20670-25ee-40a0-8360-66a16123c61d" config-ref="HTTP_Listener_config" path="update-employee" allowedMethods="PUT">
+			<http:error-response >
+				<http:body ><![CDATA[#[payload]]]></http:body>
+			</http:error-response>
+		</http:listener>
+		<logger level="INFO" doc:name="start_Logger" doc:id="33379e6f-ccc3-47e7-b13f-24423b991011" message="start of logger" />
+		<db:update doc:name="Update" doc:id="9d08f3e5-3158-4237-9ec4-2000c800ebf3" config-ref="Database_Config">
+			<db:sql ><![CDATA[update emp set EMP_STATUS =:empStatus where EMP_ID = :empId]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	empStatus: payload.employee.employeeStatus,
+	empId: payload.employee.employeeID
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="69b9145e-e8f9-4def-8148-3cf9e777a6d2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+{
+responses: {
+	"status": 200,
+	"message":"Success"
+}
+
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="end_Logger" doc:id="d7a5e328-efb0-4c4d-948c-f7e568122a1f" message="end logger" />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="ab21232f-1bd1-4d3a-82c8-7cb6271f2172" type="DB:BAD_SQL_SYNTAX">
+				<ee:transform doc:name="Transform Message" doc:id="ed6f2430-f619-425a-a6f9-08327961f8fd" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"code": 400,
+	"message": "Bad request",
+	"detail": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+</mule>
